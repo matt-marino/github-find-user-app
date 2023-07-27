@@ -1,21 +1,46 @@
-import { createContext, useState } from 'react';
+import { createContext, useReducer } from 'react';
+import githubReducer from './GithubReducer';
 
 const GithubContext = createContext();
 
 const GITHUB_URL = process.env.REACT_APP_GITHUB_URL;
 
 export const GithubProvider = ({ children }) => {
-    const [users, setUsers] = useState([])
-    const [Loading, setLoading] = useState(true)
-
-    const fetchUsers = async () => {
-        const response = await fetch(`${GITHUB_URL}/users`)
-        const data = await response.json()
-        setUsers(data)
-        setLoading(false)
+    const initialState = {
+        users: [],
+        loading: false
     }
 
-    return <GithubContext.Provider value={{ users, Loading, fetchUsers }}>{children}</GithubContext.Provider>
+    const [state, dispatch] = useReducer(githubReducer, initialState);
+
+    const searchUsers = async (text) => {
+        setLoading();
+
+        const params = new URLSearchParams({
+            q: text
+        })
+
+        const response = await fetch(`${GITHUB_URL}/search/users?${params}`)
+        const {items} = await response.json()
+        dispatch({
+            type: 'GET_USERS',
+            payload: items
+        })
+    }
+
+    const clearUsers = () => dispatch({ type: 'CLEAR_USERS' })
+
+    const setLoading = () => dispatch({ type: 'SET_LOADING' })
+
+    return <GithubContext.Provider
+    value={{
+        users: state.users,
+        loading: state.loading,
+        searchUsers,
+        clearUsers
+    }}>
+        {children}
+    </GithubContext.Provider>
 };
 
 export default GithubContext;
